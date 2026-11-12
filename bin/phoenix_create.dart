@@ -3,7 +3,7 @@ import 'dart:io';
 
 const _usage = '''
 Usage:
-  dart run phoenix_create:phoenix_create@ create <project_name> [options]
+  dart run phoenix_flutter:phoenix_create@ create <project_name> [options]
 
 Options:
   --org <reverse-domain>  Organization identifier (default: com.example)

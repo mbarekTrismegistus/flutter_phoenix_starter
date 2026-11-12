@@ -1,0 +1,8 @@
+name: phoenix_flutter
+description: Generate Flutter apps with Phoenix authentication, HTTP, and WebSocket boilerplate.
+version: 0.1.0
+repository: https://github.com/mbarekTrismegistus/flutter_phoenix_starter
+environment:
+  sdk: ">=3.13.5 <4.0.0"
+executables:
+  phoenix_create:

@@ -20,6 +20,8 @@ cd my_app
 flutter run
 ```
 
+The [example](example/create_project.dart) runs the same generator command from a Dart script.
+
 Options:
 
 - `--org`: reverse-domain organization ID, such as `com.acme` (default: `com.example`)

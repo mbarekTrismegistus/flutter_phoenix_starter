@@ -142,10 +142,59 @@ Future<Directory> _resolveTemplateDirectory() async {
     if (await installedTemplate.exists()) return installedTemplate;
   }
 
+  final cachedTemplate = await _resolveTemplateFromPubCache();
+  if (cachedTemplate != null) return cachedTemplate;
+
   throw FileSystemException(
     'Bundled Flutter template is missing from the installed phoenix_flutter package.',
     localTemplate.path,
   );
+}
+
+Future<Directory?> _resolveTemplateFromPubCache() async {
+  final scriptPath = await File.fromUri(Platform.script).resolveSymbolicLinks();
+  final pathParts = scriptPath.split(Platform.pathSeparator);
+  final bundleIndex = pathParts.indexOf('app-bundles');
+  if (bundleIndex < 0 || pathParts.length <= bundleIndex + 3) return null;
+  final packageName = pathParts[bundleIndex + 1];
+  final source = pathParts[bundleIndex + 2];
+  if (packageName != 'phoenix_flutter' || source != 'hosted') return null;
+  final version = pathParts[bundleIndex + 3];
+
+  final cacheRoots = <String>{};
+  final configuredCache = Platform.environment['PUB_CACHE'];
+  if (configuredCache != null && configuredCache.isNotEmpty) {
+    cacheRoots.add(configuredCache);
+  }
+  if (Platform.isWindows) {
+    final localAppData = Platform.environment['LOCALAPPDATA'];
+    if (localAppData != null && localAppData.isNotEmpty) {
+      cacheRoots.add(
+        '$localAppData${Platform.pathSeparator}Pub'
+        '${Platform.pathSeparator}Cache',
+      );
+    }
+  } else {
+    final home = Platform.environment['HOME'];
+    if (home != null && home.isNotEmpty) {
+      cacheRoots.add('$home${Platform.pathSeparator}.pub-cache');
+    }
+  }
+
+  for (final cacheRoot in cacheRoots) {
+    final hostedRoot = Directory('$cacheRoot${Platform.pathSeparator}hosted');
+    if (!await hostedRoot.exists()) continue;
+    await for (final host in hostedRoot.list(followLinks: false)) {
+      if (host is! Directory) continue;
+      final candidate = Directory(
+        '${host.path}${Platform.pathSeparator}$packageName-$version'
+        '${Platform.pathSeparator}templates${Platform.pathSeparator}'
+        'phoenix_flutter',
+      );
+      if (await candidate.exists()) return candidate;
+    }
+  }
+  return null;
 }
 
 Map<String, String> _parseOptions(List<String> args) {
@@ -153,17 +202,20 @@ Map<String, String> _parseOptions(List<String> args) {
   final values = <String, String>{};
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
-    if (!arg.startsWith('--'))
+    if (!arg.startsWith('--')) {
       throw FormatException('Unexpected argument: $arg');
+    }
     final parts = arg.substring(2).split('=');
     final key = parts.first;
-    if (!supported.contains(key))
+    if (!supported.contains(key)) {
       throw FormatException('Unknown option: --$key');
+    }
     if (parts.length > 1) {
       values[key] = parts.skip(1).join('=');
     } else {
-      if (i + 1 >= args.length || args[i + 1].startsWith('--'))
+      if (i + 1 >= args.length || args[i + 1].startsWith('--')) {
         throw FormatException('Missing value for --$key');
+      }
       values[key] = args[++i];
     }
   }
